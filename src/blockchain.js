@@ -8,7 +8,6 @@
  *
  */
 
-const SHA256 = require("crypto-js/sha256");
 const BlockClass = require("./block.js");
 const bitcoinMessage = require("bitcoinjs-message");
 const helpers = require("./helpers");
@@ -219,13 +218,15 @@ class Blockchain {
   getStarsByWalletAddress(address) {
     const chainWithoutGenesisBlock = this.chain.slice(1);
     return new Promise(async (resolve, reject) => {
+      let stars = [];
       try {
-        const blocksData = await Promise.all(
-          chainWithoutGenesisBlock.map((block) => block.getBData())
-        );
-        const stars = blocksData
-          .filter((bData) => bData.data.owner === address)
-          .map((bData) => bData.data);
+        for (let i = 0; i < chainWithoutGenesisBlock.length; i++) {
+          const block = chainWithoutGenesisBlock[i];
+          const { data } = await block.getBData();
+          if (data.owner === address) {
+            stars.push(data);
+          }
+        }
         resolve(stars);
       } catch (e) {
         reject(new GetStarByOwnerError(e.message));
@@ -255,10 +256,6 @@ class Blockchain {
                 height: block.height,
               })
             );
-          }
-          // test purpouse only
-          if (previousBlock) {
-            previousBlock.hash = "4";
           }
 
           if (
