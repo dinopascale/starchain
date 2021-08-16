@@ -22,7 +22,7 @@ class AddNewBlockError extends Error {
 
 class SubmitStarError extends Error {
   constructor(msg) {
-    super("An error occured during submit star: " + msg);
+    super("An error occured submitting a new star: " + msg);
     this.name = "SubmitStarError";
   }
 }
@@ -31,6 +31,17 @@ class GetStarByOwnerError extends Error {
   constructor(msg) {
     super("An error occured when searching stars by owner: " + msg);
     this.name = "GetStarByOwnerError";
+  }
+}
+
+class ValidationErrorLog {
+  constructor(message, data) {
+    this.message = message;
+    this.data = data;
+  }
+
+  buildObject() {
+    return { message: this.message, data: this.data };
   }
 }
 
@@ -96,6 +107,10 @@ class Blockchain {
           .setTimeStamp()
           .setHeight(self.chain.length)
           .setHash();
+        const errors = await self.validateChain();
+        if (errors.length) {
+          throw new Error("Chain is invalid!");
+        }
         self.chain.push(block);
         self.height += 1;
         resolve(block);
@@ -159,6 +174,7 @@ class Blockchain {
         reject(
           e instanceof SubmitStarError ? e : new SubmitStarError(e.message)
         );
+        reject(e);
       }
     });
   }
@@ -226,7 +242,45 @@ class Blockchain {
   validateChain() {
     let self = this;
     let errorLog = [];
-    return new Promise(async (resolve, reject) => {});
+    return new Promise(async (resolve, reject) => {
+      for (let i = 0; i < self.chain.length; i++) {
+        try {
+          const block = self.chain[i];
+          const previousBlock = self.chain[i - 1];
+          const blockIsNotTampered = await block.validate();
+          if (!blockIsNotTampered) {
+            errorLog.push(
+              new ValidationErrorLog("Block is not valid", {
+                hash: block.hash,
+                height: block.height,
+              })
+            );
+          }
+          // test purpouse only
+          if (previousBlock) {
+            previousBlock.hash = "4";
+          }
+
+          if (
+            block.previousBlockHash &&
+            previousBlock &&
+            block.previousBlockHash !== previousBlock.hash
+          ) {
+            errorLog.push(
+              new ValidationErrorLog("Block is wrongly linked", {
+                hash: block.hash,
+                height: block.height,
+                previousBlockHashOnBlock: block.previousBlockHash,
+                previousBlockHashOnChain: previousBlock.hash,
+              })
+            );
+          }
+        } catch (e) {
+          reject(e);
+        }
+      }
+      resolve(errorLog);
+    });
   }
 }
 
