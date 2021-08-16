@@ -56,8 +56,9 @@ class Blockchain {
   constructor() {
     this.chain = [];
     this.height = -1;
-    this.initializeChain();
+    // set a limitTime as a property of blockChain, so it'll be more easy to change in future
     this.limitTime = helpers.minuteToSeconds(5);
+    this.initializeChain();
   }
 
   /**
@@ -97,21 +98,20 @@ class Blockchain {
     let self = this;
     return new Promise(async (resolve, reject) => {
       try {
+        const chainLength = self.chain.length;
+        const previousBlock = self.chain[chainLength - 1];
+        // we use helper methods of block class in "point chaining" fashion
         block
-          .setPreviousHash(
-            self.chain.length === 0
-              ? null
-              : self.chain[self.chain.length - 1].hash
-          )
+          .setPreviousHash(previousBlock ? previousBlock.hash : null)
           .setTimeStamp()
-          .setHeight(self.chain.length)
+          .setHeight(chainLength)
           .setHash();
         const errors = await self.validateChain();
         if (errors.length) {
           throw new Error("Chain is invalid!");
         }
         self.chain.push(block);
-        self.height += 1;
+        self.height++;
         resolve(block);
       } catch (error) {
         reject(new AddNewBlockError(error.message));
