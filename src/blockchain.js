@@ -11,6 +11,7 @@
 const SHA256 = require("crypto-js/sha256");
 const BlockClass = require("./block.js");
 const bitcoinMessage = require("bitcoinjs-message");
+const helpers = require("./helpers");
 
 class AddNewBlockError extends Error {
   constructor(msg) {
@@ -97,7 +98,9 @@ class Blockchain {
    * @param {*} address
    */
   requestMessageOwnershipVerification(address) {
-    return new Promise((resolve) => {});
+    return new Promise((resolve) => {
+      resolve(`${address}:${helpers.getTimeStamp()}:starRegistry`);
+    });
   }
 
   /**
