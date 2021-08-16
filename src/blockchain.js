@@ -12,6 +12,13 @@ const SHA256 = require("crypto-js/sha256");
 const BlockClass = require("./block.js");
 const bitcoinMessage = require("bitcoinjs-message");
 
+class AddNewBlockError extends Error {
+  constructor(msg) {
+    super(msg);
+    this.name = "AddNewBlockError";
+  }
+}
+
 class Blockchain {
   /**
    * Constructor of the class, you will need to setup your chain array and the height
@@ -62,7 +69,23 @@ class Blockchain {
    */
   _addBlock(block) {
     let self = this;
-    return new Promise(async (resolve, reject) => {});
+    return new Promise(async (resolve, reject) => {
+      try {
+        self.height += 1;
+        block
+          .setPreviousHash(
+            self.height <= 0 ? null : self.chain[self.height].hash
+          )
+          .setTimeStamp()
+          .setHeight(self.height)
+          .setHash();
+        self.chain.push(block);
+        resolve(block);
+      } catch (error) {
+        self.height -= 1;
+        reject(new AddNewBlockError(error));
+      }
+    });
   }
 
   /**
