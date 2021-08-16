@@ -106,6 +106,9 @@ class Block {
    * @returns same class for point chaining methods
    */
   setHeight(height) {
+    if (height < 0) {
+      throw new Error("Height cannot be less then zero");
+    }
     this.height = height;
     return this;
   }
