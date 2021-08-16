@@ -12,6 +12,20 @@
 const SHA256 = require("crypto-js/sha256");
 const hex2ascii = require("hex2ascii");
 
+class ValidateBlockError extends Error {
+  constructor(msg) {
+    super(msg);
+    this.name = "ValidateBlockError";
+  }
+}
+
+class GetBlockDataError extends Error {
+  constructor(msg) {
+    super(msg);
+    this.name = "GetBlockDataError";
+  }
+}
+
 class Block {
   // Constructor - argument data will be the object containing the transaction data
   constructor(data) {
@@ -39,15 +53,17 @@ class Block {
     return new Promise((resolve, reject) => {
       try {
         // Save in auxiliary variable the current block hash
-        const savedHash = self.hash;
+        const currentHash = self.hash;
+        // remove hash from block
+        self.hash = null;
         // Recalculate the hash of the Block
-        const currentHash = self._hashBlock();
-        // Comparing if the hashes changed
-        // Returning the Block is not valid
-        // Returning the Block is valid
-        resolve(savedHash === currentHash);
+        const newHash = self._hashBlock();
+        // set hash back to previous value;
+        self.hash = currentHash;
+        resolve(currentHash === newHash);
       } catch (e) {
-        reject(e);
+        // reject with new ValidateBlockError if something is gone bad
+        reject(new ValidateBlockError(e));
       }
     });
   }
@@ -62,17 +78,44 @@ class Block {
    *     or Reject with an error.
    */
   getBData() {
-    // Getting the encoded data saved in the Block
-    // Decoding the data to retrieve the JSON representation of the object
-    // Parse the data to an object to be retrieve.
-    // Resolve with the data if the object isn't the Genesis block
+    const self = this;
+    return new Promise((resolve, reject) => {
+      // if block is Genesis Block we reject with new Error
+      if (self.previousBlockHash == null || !self.height) {
+        reject(new GetBlockDataError("This is Genesis Block!"));
+      }
+      try {
+        // decode data in an ascii string;
+        const decodedData = hex2ascii(self.data);
+        // parse the string in a Javascript object;
+        const parsed = JSON.parse(decodedData);
+        // resolve promise with parsed data
+        resolve(parsed);
+      } catch (e) {
+        // if some error occurs in decoding + parsing process we reject with error
+        reject(new GetBlockDataError(e));
+      }
+    });
   }
 
+  /**
+   * utility method for setting height of block. Can be chained
+   * with other methods of class
+   * @param {*} height
+   * @returns same class for point chaining methods
+   */
   setHeight(height) {
     this.height = height;
     return this;
   }
 
+  /**
+   * utility method for setting previous hash of block. If a null
+   * param is passed we don't set anything. Can be chained
+   * with other methods of class
+   * @param {*} hash
+   * @returns same class for point chaining methods
+   */
   setPreviousHash(hash) {
     if (hash != null) {
       this.previousBlockHash = hash;
@@ -80,16 +123,32 @@ class Block {
     return this;
   }
 
+  /**
+   * utility method for setting timestamp of block. Can be
+   * chained with other methods of class
+   * @returns same class for point chaining methods
+   */
   setTimeStamp() {
     this.time = new Date().getTime().toString().slice(0, -3);
     return this;
   }
 
+  /**
+   * utility method for setting hash of block. Use internal
+   * method so that we can uniforming creation of hash and validate
+   * method. Can be chained with other methods of class
+   * @returns same class for point chaining methods
+   */
   setHash() {
     this.hash = this._hashBlock();
     return this;
   }
 
+  /**
+   * private method for abstracting process of encrypting information
+   * of block in an hash with SHA256 algorithm
+   * @returns string with hash of current block
+   */
   _hashBlock() {
     return SHA256(JSON.stringify(this)).toString();
   }
