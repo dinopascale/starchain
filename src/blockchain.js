@@ -20,6 +20,13 @@ class AddNewBlockError extends Error {
   }
 }
 
+class SubmitStarError extends Error {
+  constructor(msg) {
+    super(msg);
+    this.name = "SubmitStarError";
+  }
+}
+
 class Blockchain {
   /**
    * Constructor of the class, you will need to setup your chain array and the height
@@ -33,6 +40,7 @@ class Blockchain {
     this.chain = [];
     this.height = -1;
     this.initializeChain();
+    this.limitTime = helpers.minuteToMilliseconds(5);
   }
 
   /**
@@ -72,19 +80,20 @@ class Blockchain {
     let self = this;
     return new Promise(async (resolve, reject) => {
       try {
-        self.height += 1;
         block
           .setPreviousHash(
-            self.height <= 0 ? null : self.chain[self.height].hash
+            self.chain.length === 0
+              ? null
+              : self.chain[self.chain.length - 1].hash
           )
           .setTimeStamp()
-          .setHeight(self.height)
+          .setHeight(self.chain.length)
           .setHash();
         self.chain.push(block);
+        self.height += 1;
         resolve(block);
       } catch (error) {
-        self.height -= 1;
-        reject(new AddNewBlockError(error));
+        reject(new AddNewBlockError(error.message));
       }
     });
   }
@@ -122,7 +131,31 @@ class Blockchain {
    */
   submitStar(address, message, signature, star) {
     let self = this;
-    return new Promise(async (resolve, reject) => {});
+    return new Promise(async (resolve, reject) => {
+      try {
+        const messageTime = parseInt(message.split(":")[1]);
+        const currentTime = parseInt(helpers.getTimeStamp());
+        if (currentTime - messageTime > self.limitTime) {
+          throw new SubmitStarError(
+            "Too much time passed between request validation and submit"
+          );
+        }
+        if (!bitcoinMessage.verify(message, address, signature)) {
+          throw new SubmitStarError("Validation for your message failed!");
+        }
+        const newBlock = new BlockClass.Block({ data: star });
+        const block = await this._addBlock(newBlock);
+        resolve(block);
+        console.log("qui", newBlock);
+      } catch (e) {
+        console.log("qui", e);
+        reject(
+          e instanceof SubmitStarError
+            ? e
+            : new SubmitStarError("an error occur: " + e.message)
+        );
+      }
+    });
   }
 
   /**
