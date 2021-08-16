@@ -22,7 +22,7 @@ class AddNewBlockError extends Error {
 
 class SubmitStarError extends Error {
   constructor(msg) {
-    super(msg);
+    super("An error occured during submit star: " + msg);
     this.name = "SubmitStarError";
   }
 }
@@ -40,7 +40,7 @@ class Blockchain {
     this.chain = [];
     this.height = -1;
     this.initializeChain();
-    this.limitTime = helpers.minuteToMilliseconds(5);
+    this.limitTime = helpers.minuteToSeconds(5);
   }
 
   /**
@@ -146,13 +146,9 @@ class Blockchain {
         const newBlock = new BlockClass.Block({ data: star });
         const block = await this._addBlock(newBlock);
         resolve(block);
-        console.log("qui", newBlock);
       } catch (e) {
-        console.log("qui", e);
         reject(
-          e instanceof SubmitStarError
-            ? e
-            : new SubmitStarError("an error occur: " + e.message)
+          e instanceof SubmitStarError ? e : new SubmitStarError(e.message)
         );
       }
     });
