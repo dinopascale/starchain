@@ -87,7 +87,7 @@ class Block {
       }
       try {
         // decode data in an ascii string;
-        const decodedData = hex2ascii(self.data);
+        const decodedData = hex2ascii(self.body);
         // parse the string in a Javascript object;
         const parsed = JSON.parse(decodedData);
         // resolve promise with parsed data

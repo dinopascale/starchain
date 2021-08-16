@@ -27,6 +27,13 @@ class SubmitStarError extends Error {
   }
 }
 
+class GetStarByOwnerError extends Error {
+  constructor(msg) {
+    super("An error occured when searching stars by owner: " + msg);
+    this.name = "GetStarByOwnerError";
+  }
+}
+
 class Blockchain {
   /**
    * Constructor of the class, you will need to setup your chain array and the height
@@ -143,7 +150,9 @@ class Blockchain {
         if (!bitcoinMessage.verify(message, address, signature)) {
           throw new SubmitStarError("Validation for your message failed!");
         }
-        const newBlock = new BlockClass.Block({ data: star });
+        const newBlock = new BlockClass.Block({
+          data: { owner: address, star },
+        });
         const block = await this._addBlock(newBlock);
         resolve(block);
       } catch (e) {
@@ -192,9 +201,20 @@ class Blockchain {
    * @param {*} address
    */
   getStarsByWalletAddress(address) {
-    let self = this;
-    let stars = [];
-    return new Promise((resolve, reject) => {});
+    const chainWithoutGenesisBlock = this.chain.slice(1);
+    return new Promise(async (resolve, reject) => {
+      try {
+        const blocksData = await Promise.all(
+          chainWithoutGenesisBlock.map((block) => block.getBData())
+        );
+        const stars = blocksData
+          .filter((bData) => bData.data.owner === address)
+          .map((bData) => bData.data);
+        resolve(stars);
+      } catch (e) {
+        reject(new GetStarByOwnerError(e.message));
+      }
+    });
   }
 
   /**
