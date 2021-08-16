@@ -11,6 +11,7 @@
 
 const SHA256 = require("crypto-js/sha256");
 const hex2ascii = require("hex2ascii");
+const helpers = require("./helpers");
 
 class ValidateBlockError extends Error {
   constructor(msg) {
@@ -129,7 +130,7 @@ class Block {
    * @returns same class for point chaining methods
    */
   setTimeStamp() {
-    this.time = new Date().getTime().toString().slice(0, -3);
+    this.time = helpers.getTimeStamp();
     return this;
   }
 
